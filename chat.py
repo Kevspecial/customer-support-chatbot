@@ -27,6 +27,52 @@ from botocore.config import Config
 from botocore.eventstream import EventStream
 
 
+OPEN, CLOSE = "<thinking>", "</thinking>"
+
+
+class ThinkingFilter:
+    """Suppress <thinking>...</thinking> spans from Nova's streamed output.
+
+    Tags can be split across stream deltas, so text is held back until it is
+    long enough to rule out a partial tag match.
+    """
+
+    def __init__(self):
+        self.pending = ""
+        self.in_thinking = False
+
+    def feed(self, text):
+        """Return the portion of `text` that is safe to display now."""
+        self.pending += text
+        out = []
+        while True:
+            if self.in_thinking:
+                idx = self.pending.find(CLOSE)
+                if idx == -1:
+                    self.pending = self.pending[-(len(CLOSE) - 1):]
+                    break
+                self.pending = self.pending[idx + len(CLOSE):]
+                self.in_thinking = False
+            else:
+                idx = self.pending.find(OPEN)
+                if idx == -1:
+                    keep = len(OPEN) - 1
+                    if len(self.pending) > keep:
+                        out.append(self.pending[:-keep])
+                        self.pending = self.pending[-keep:]
+                    break
+                out.append(self.pending[:idx])
+                self.pending = self.pending[idx + len(OPEN):]
+                self.in_thinking = True
+        return "".join(out)
+
+    def flush(self):
+        """Return any remaining displayable text at end of message."""
+        tail = "" if self.in_thinking else self.pending
+        self.pending = ""
+        return tail
+
+
 def event_stream(response):
     """Locate the streaming part of the invoke_harness response."""
     for value in response.values():
@@ -57,7 +103,10 @@ def invoke(rt, config, session_id, user_text, verbose=False):
     )
 
     texts = []      # completed assistant messages
-    buffer = []     # text of the message currently streaming
+    buffer = []     # visible text of the message currently streaming
+    # Nova streams its reasoning inside <thinking>...</thinking>; keep it out
+    # of the customer-facing transcript.
+    tf = ThinkingFilter()
     for event in event_stream(response):
         if verbose:
             print(f"\n[event] {json.dumps(event, default=str)}", file=sys.stderr)
@@ -68,16 +117,27 @@ def invoke(rt, config, session_id, user_text, verbose=False):
         elif "contentBlockDelta" in event:
             delta = event["contentBlockDelta"].get("delta", {})
             if "text" in delta:
-                print(delta["text"], end="", flush=True)
-                buffer.append(delta["text"])
+                visible = tf.feed(delta["text"])
+                if visible:
+                    print(visible, end="", flush=True)
+                    buffer.append(visible)
         elif "messageStop" in event:
+            tail = tf.flush()
+            if tail:
+                print(tail, end="", flush=True)
+                buffer.append(tail)
+            tf = ThinkingFilter()
             if buffer:
                 texts.append("".join(buffer))
                 buffer = []
+    tail = tf.flush()
+    if tail:
+        print(tail, end="", flush=True)
+        buffer.append(tail)
     if buffer:
         texts.append("".join(buffer))
     print()
-    return texts[-1] if texts else ""
+    return texts[-1].strip() if texts else ""
 
 
 def main():

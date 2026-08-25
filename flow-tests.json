@@ -1,0 +1,74 @@
+{
+  "flowInputNode": {
+    "nodeName": "FlowInputNode"
+  },
+  "_comment": [
+    "Test suite for the Bedrock Flow. Each case is one message sent to the",
+    "flow; the flow is single-turn and has no tool, so the bug branch can",
+    "only acknowledge and ask - it cannot file a ticket or return a ticket ID.",
+    "Expected values are written as the ideal response and become",
+    "referenceResponse for the LLM-as-a-judge evaluation."
+  ],
+  "tests": [
+    {
+      "id": "bug-01-complete",
+      "prompt": "Checkout is broken. I add two items to my cart, click Pay now, and the page spins forever and never loads. Chrome 120 on Windows 11, desktop.",
+      "expected": "Thanks the customer, restates the checkout problem in their terms, and confirms the report has everything the engineering team needs and is being passed on. Does not claim a ticket was created and does not give a ticket ID or reference number."
+    },
+    {
+      "id": "bug-02-vague",
+      "prompt": "your website is broken",
+      "expected": "Asks one short question about what specifically is going wrong. Does not claim a ticket was created, does not give a ticket ID, and does not ask several questions at once."
+    },
+    {
+      "id": "bug-03-missing-environment",
+      "prompt": "The search bar returns no results at all. I type 'blue mug' into the search box on the home page and press enter, and I get an empty results page every time.",
+      "expected": "Acknowledges the search problem and asks one question about which browser, operating system, or device the customer is using. Does not re-ask what is broken or what the steps were, and does not give a ticket ID."
+    },
+    {
+      "id": "bug-04-complaint-tone",
+      "prompt": "This is ridiculous - I've tried three times to leave a product review and it fails every time. I open the product page, click 'Write a review', type it, hit submit and get a red 'Something went wrong' banner. Safari 17, macOS Sonoma.",
+      "expected": "Acknowledges the frustration briefly, restates the review submission problem, and confirms the report is complete and being passed to the engineering team. Asks no clarifying questions and gives no ticket ID."
+    },
+    {
+      "id": "faq-01-return-policy",
+      "prompt": "What is your return policy?",
+      "expected": "Explains that most items can be returned within 30 days of delivery as long as they are unused and in original packaging, unless the item arrived defective. Adds no conditions or fees the FAQ does not state."
+    },
+    {
+      "id": "faq-02-refund-timing",
+      "prompt": "I sent my return back last week. How long until I get my money?",
+      "expected": "Explains that refunds are issued to the original payment method after the return is received and inspected, and that this typically takes 3-10 business days depending on the bank or provider. Does not promise a specific date."
+    },
+    {
+      "id": "faq-03-damaged-item",
+      "prompt": "The lamp I ordered turned up cracked. What do I do?",
+      "expected": "Asks the customer to make contact within 7 days of delivery with photos of the item, the packaging, and the shipping label, and explains that a replacement or refund will then be arranged."
+    },
+    {
+      "id": "faq-04-password-reset",
+      "prompt": "I can't remember my password and I need to sign in.",
+      "expected": "Directs the customer to the 'Forgot password' link on the sign-in page and notes that a reset email is sent if the address matches an account."
+    },
+    {
+      "id": "other-01-customs-duty",
+      "prompt": "If I order from Germany, will I have to pay import duty?",
+      "expected": "Does not state or estimate any customs, duty, or tax policy, because the FAQ does not cover it. Politely explains this cannot be answered in chat and refers the customer to the human support line on 1-800-555-0199, Monday to Friday."
+    },
+    {
+      "id": "other-02-warranty",
+      "prompt": "How long is the warranty on the electronics you sell?",
+      "expected": "Does not state any warranty terms, because the FAQ does not cover warranties. Politely refers the customer to the human support line on 1-800-555-0199, Monday to Friday."
+    },
+    {
+      "id": "other-03-wholesale",
+      "prompt": "I run a small hotel and want to buy 200 units at trade prices. Who do I talk to?",
+      "expected": "Does not quote bulk or trade pricing, because the FAQ does not cover wholesale. Politely refers the customer to the human support line on 1-800-555-0199, Monday to Friday."
+    },
+    {
+      "id": "other-04-off-topic",
+      "prompt": "What's a good recipe for banana bread?",
+      "expected": "Politely declines because the request is unrelated to the shop, and refers the customer to the human support line on 1-800-555-0199, Monday to Friday, or offers to help with an order or a problem on the website instead."
+    }
+  ]
+}

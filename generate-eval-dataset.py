@@ -15,6 +15,7 @@ Evaluations expects:
 
 import argparse
 import json
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -80,7 +81,11 @@ def invoke_harness_once(
     if buffer:
         texts.append("".join(buffer))
 
-    return {"final_output_text": texts[-1] if texts else ""}
+    # Strip Nova's <thinking>...</thinking> reasoning spans so the judge
+    # model scores the customer-facing answer, not the reasoning.
+    final = texts[-1] if texts else ""
+    final = re.sub(r"<thinking>.*?</thinking>", "", final, flags=re.DOTALL)
+    return {"final_output_text": final.strip()}
 
 
 def main():
